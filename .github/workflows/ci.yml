@@ -19,3 +19,25 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - run: python -m pytest -v
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t js-lab:ci .
+      - name: Start container
+        run: docker run -d --name js-lab -p 8501:8501 js-lab:ci
+      - name: Health check
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8501/_stcore/health; then
+              echo " healthy"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "App did not become healthy"
+          docker logs js-lab
+          exit 1
